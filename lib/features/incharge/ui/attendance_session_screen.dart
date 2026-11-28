@@ -922,7 +922,7 @@ class _AttendanceSessionState extends ConsumerState<AttendanceSessionScreen> wit
             child: MobileScanner(
               controller: _scannerController,
               onDetect: _onBarcodeDetect,
-              placeholderBuilder: (context, child) {
+              placeholderBuilder: (context) {
                 return Container(
                   color: const Color(0xFF0F172A),
                   child: const Center(
@@ -952,7 +952,7 @@ class _AttendanceSessionState extends ConsumerState<AttendanceSessionScreen> wit
                   ),
                 );
               },
-              errorBuilder: (context, error, child) {
+              errorBuilder: (context, error) {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),

@@ -82,42 +82,59 @@ class _StudentQRScanScreenState extends ConsumerState<StudentQRScanScreen> with 
   }
 
   Future<void> _safeSwitchCamera() async {
-    if (_isSwitchingCamera) return;
-    setState(() => _isSwitchingCamera = true);
-    try {
-      // Turn off torch before switching to front camera to prevent hardware crashes
-      if (_controller.torchState.value == TorchState.on) {
-        try {
-          await _controller.toggleTorch();
-        } catch (_) {}
-      }
-      await _controller.switchCamera();
-    } catch (e) {
-      debugPrint('[StudentScanner] Switch camera error: $e');
-      if (mounted) {
-        AppSnackBar.showError(context, 'Could not switch camera: Device has only one camera or camera is busy.');
-      }
-    } finally {
-      if (mounted) setState(() => _isSwitchingCamera = false);
-    }
-  }
+  if (_isSwitchingCamera) return;
 
-  Future<void> _safeToggleTorch() async {
-    try {
-      if (_controller.cameraFacingState.value == CameraFacing.front) {
-        if (mounted) {
-          AppSnackBar.showInfo(context, 'Flashlight is not available on front camera.');
-        }
-        return;
-      }
-      await _controller.toggleTorch();
-    } catch (e) {
-      debugPrint('[StudentScanner] Toggle torch error: $e');
-      if (mounted) {
-        AppSnackBar.showError(context, 'Flashlight is not supported or unavailable.');
-      }
+  setState(() => _isSwitchingCamera = true);
+
+  try {
+    // Turn off the torch only if it is currently ON.
+    if (_controller.value.torchState == TorchState.on) {
+      try {
+        await _controller.toggleTorch();
+      } catch (_) {}
+    }
+
+    await _controller.switchCamera();
+  } catch (e) {
+    debugPrint('[StudentScanner] Switch camera error: $e');
+
+    if (mounted) {
+      AppSnackBar.showError(
+        context,
+        'Could not switch camera: Device has only one camera or camera is busy.',
+      );
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isSwitchingCamera = false);
     }
   }
+}
+
+Future<void> _safeToggleTorch() async {
+  try {
+    if (_controller.value.cameraDirection == CameraFacing.front) {
+      if (mounted) {
+        AppSnackBar.showInfo(
+          context,
+          'Flashlight is not available on front camera.',
+        );
+      }
+      return;
+    }
+
+    await _controller.toggleTorch();
+  } catch (e) {
+    debugPrint('[StudentScanner] Toggle torch error: $e');
+
+    if (mounted) {
+      AppSnackBar.showError(
+        context,
+        'Flashlight is not supported or unavailable.',
+      );
+    }
+  }
+}
 
   @override
   void dispose() {
@@ -330,35 +347,57 @@ class _StudentQRScanScreenState extends ConsumerState<StudentQRScanScreen> with 
         ),
         actions: [
           IconButton(
-            icon: ValueListenableBuilder(
-              valueListenable: _controller.torchState,
-              builder: (context, state, child) {
-                switch (state) {
-                  case TorchState.off:
-                    return const Icon(Icons.flash_off_rounded, color: Colors.white);
-                  case TorchState.on:
-                    return const Icon(Icons.flash_on_rounded, color: AppTheme.warning);
-                }
-              },
-            ),
-            onPressed: _safeToggleTorch,
-            tooltip: 'Toggle Flashlight',
-          ),
-          IconButton(
-            icon: ValueListenableBuilder(
-              valueListenable: _controller.cameraFacingState,
-              builder: (context, state, child) {
-                switch (state) {
-                  case CameraFacing.front:
-                    return const Icon(Icons.camera_front_rounded, color: Colors.white);
-                  case CameraFacing.back:
-                    return const Icon(Icons.camera_rear_rounded, color: Colors.white);
-                }
-              },
-            ),
-            onPressed: _safeSwitchCamera,
-            tooltip: 'Switch Camera',
-          ),
+  icon: ValueListenableBuilder<MobileScannerState>(
+    valueListenable: _controller,
+    builder: (context, state, child) {
+      switch (state.torchState) {
+        case TorchState.off:
+          return const Icon(
+            Icons.flash_off_rounded,
+            color: Colors.white,
+          );
+        case TorchState.on:
+          return const Icon(
+            Icons.flash_on_rounded,
+            color: AppTheme.warning,
+          );
+        default:
+          return const Icon(
+            Icons.flash_off_rounded,
+            color: Colors.white54,
+          );
+      }
+    },
+  ),
+  onPressed: _safeToggleTorch,
+  tooltip: 'Toggle Flashlight',
+),
+IconButton(
+  icon: ValueListenableBuilder<MobileScannerState>(
+    valueListenable: _controller,
+    builder: (context, state, child) {
+      switch (state.cameraDirection) {
+        case CameraFacing.front:
+          return const Icon(
+            Icons.camera_front_rounded,
+            color: Colors.white,
+          );
+        case CameraFacing.back:
+          return const Icon(
+            Icons.camera_rear_rounded,
+            color: Colors.white,
+          );
+        default:
+          return const Icon(
+            Icons.flip_camera_android_rounded,
+            color: Colors.white,
+          );
+      }
+    },
+  ),
+  onPressed: _safeSwitchCamera,
+  tooltip: 'Switch Camera',
+),
         ],
       ),
       body: Stack(
@@ -367,7 +406,7 @@ class _StudentQRScanScreenState extends ConsumerState<StudentQRScanScreen> with 
           MobileScanner(
             controller: _controller,
             onDetect: _handleBarcode,
-            errorBuilder: (context, error, child) {
+            errorBuilder: (context, error) {
               return _buildScannerError(context, error);
             },
           ),

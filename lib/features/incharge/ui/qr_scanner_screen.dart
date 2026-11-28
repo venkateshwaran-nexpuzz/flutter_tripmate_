@@ -235,11 +235,9 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with WidgetsB
     setState(() => _isSwitchingCamera = true);
     try {
       // Turn off torch before switching to front camera to prevent hardware crashes
-      if (_controller.torchState.value == TorchState.on) {
         try {
           await _controller.toggleTorch();
         } catch (_) {}
-      }
       await _controller.switchCamera();
     } catch (e) {
       debugPrint('[InchargeScanner] Switch camera error: $e');
@@ -253,7 +251,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with WidgetsB
 
   Future<void> _safeToggleTorch() async {
     try {
-      if (_controller.cameraFacingState.value == CameraFacing.front) {
+      if (_controller.value.cameraDirection == CameraFacing.front) {
         if (mounted) {
           AppSnackBar.showInfo(context, 'Flashlight is not available on front camera.');
         }
@@ -735,30 +733,31 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with WidgetsB
         actions: [
           IconButton(
             icon: ValueListenableBuilder(
-              valueListenable: _controller.torchState,
+              valueListenable: _controller,
               builder: (context, state, child) {
-                switch (state) {
-                  case TorchState.off:
-                    return const Icon(Icons.flash_off_rounded);
-                  case TorchState.on:
-                    return const Icon(Icons.flash_on_rounded, color: AppTheme.warning);
-                }
-              },
+  return Icon(
+    state.torchState == TorchState.on
+        ? Icons.flash_on_rounded
+        : Icons.flash_off_rounded,
+    color: state.torchState == TorchState.on
+        ? AppTheme.warning
+        : null,
+  );
+},
             ),
             onPressed: _safeToggleTorch,
             tooltip: 'Toggle Flashlight',
           ),
           IconButton(
             icon: ValueListenableBuilder(
-              valueListenable: _controller.cameraFacingState,
-              builder: (context, state, child) {
-                switch (state) {
-                  case CameraFacing.front:
-                    return const Icon(Icons.camera_front_rounded);
-                  case CameraFacing.back:
-                    return const Icon(Icons.camera_rear_rounded);
-                }
-              },
+              valueListenable: _controller,
+             builder: (context, state, child) {
+  return Icon(
+    state.cameraDirection == CameraFacing.front
+        ? Icons.camera_front_rounded
+        : Icons.camera_rear_rounded,
+  );
+},
             ),
             onPressed: _safeSwitchCamera,
             tooltip: 'Switch Camera',
@@ -770,7 +769,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with WidgetsB
           MobileScanner(
             controller: _controller,
             onDetect: _onDetect,
-            placeholderBuilder: (context, child) {
+            placeholderBuilder: (context) {
               return Container(
                 color: const Color(0xFF0F172A),
                 child: const Center(
@@ -800,7 +799,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with WidgetsB
                 ),
               );
             },
-            errorBuilder: (context, error, child) {
+            errorBuilder: (context, error) {
               return _buildScannerError(context, error);
             },
           ),

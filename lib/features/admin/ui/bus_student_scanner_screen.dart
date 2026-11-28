@@ -203,13 +203,15 @@ class _BusStudentScannerScreenState extends ConsumerState<BusStudentScannerScree
           }
         });
 
-        final hasBarcode = await _scannerController.analyzeImage(photo.path);
-        if (hasBarcode) {
-          barcodeFromPhoto = await completer.future.timeout(
-            const Duration(milliseconds: 1200),
-            onTimeout: () => null,
-          );
-        }
+       final capture = await _scannerController.analyzeImage(photo.path);
+      if (capture != null && capture.barcodes.isNotEmpty) {
+         barcodeFromPhoto = capture.barcodes
+          .map((barcode) => barcode.rawValue?.trim())
+          .firstWhere(
+            (value) => value != null && value.isNotEmpty,
+            orElse: () => null,
+            );
+  }
       } catch (e) {
         debugPrint('[IdCardOCR] Photo barcode scan note: $e');
       } finally {
@@ -675,7 +677,7 @@ class _BusStudentScannerScreenState extends ConsumerState<BusStudentScannerScree
         MobileScanner(
           controller: _scannerController,
           onDetect: _onBarcodeDetected,
-          errorBuilder: (ctx, err, child) {
+          errorBuilder: (ctx, err) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
